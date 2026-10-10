@@ -6,9 +6,11 @@ x-arcane:
 
 services:
   app:
-    # Use 'lite' tag for a smaller image (~700MB vs ~4.4GB) without PyTorch
-    # Semantic search in Inquire Mode falls back to text search; all other features work normally
-    image: learnedmachine/speakr:lite
+    build:
+      context: .
+      args:
+        LIGHTWEIGHT: 1  # Set to 1 for a smaller image without PyTorch
+    image: speakr:custom  # Tag for your custom build
     container_name: speakr
     restart: unless-stopped
     ports:
