@@ -1,0 +1,32 @@
+x-arcane: 
+  icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/speakr.webp
+  urls:
+    - https://murtaza-nasir.github.io/speakr/
+    - https://github.com/murtaza-nasir/speakr
+
+services:
+  app:
+    # Use 'lite' tag for a smaller image (~700MB vs ~4.4GB) without PyTorch
+    # Semantic search in Inquire Mode falls back to text search; all other features work normally
+    image: learnedmachine/speakr:lite
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    environment:
+      # Set log level for troubleshooting
+      # Use ERROR for production (minimal logs)
+      # Use INFO for debugging issues (recommended when troubleshooting)
+      # Use DEBUG for detailed development logging
+      - LOG_LEVEL=INFO
+
+    # --- Volume Configuration ---
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+      # Optional: Uncomment if using auto-export feature (ENABLE_AUTO_EXPORT=true)
+      # - ./exports:/data/exports
+      # Optional: Uncomment if using auto-processing feature (ENABLE_AUTO_PROCESSING=true)
+      # - ./auto-process:/data/auto-process
