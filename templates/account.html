@@ -2658,7 +2658,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
 
                 const SYSTEM_PROMPT_TEMPLATE =
-                    'You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\n' +
+                    'You are an AI assistant that generates summaries for meeting and phone call transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\n' +
                     'Context:\n' +
                     '- Current date: {current_date}\n' +
                     '- Recording date: {recording_date}    [if meeting date is set]\n' +

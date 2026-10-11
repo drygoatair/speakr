@@ -787,7 +787,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             prompt_text = _shared_user_prefix(transcript_text) + "\n".join(suffix_parts)
         else:
             # Build SYSTEM message: Initial instructions + Context + Language
-            system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
+            system_message_content = "You are an AI assistant that generates summaries for meeting and phone call transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
             system_message_content += f"\n\n{context_section}"
             if user_output_language:
                 system_message_content += f"\n\nLanguage Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory."
@@ -2779,7 +2779,7 @@ def generate_incognito_summary(transcription_text, user=None):
                 summarization_instructions = DEFAULT_SUMMARY_PROMPT
 
         # Build messages
-        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format."
+        system_message_content = "You are an AI assistant that generates summaries for meeting and phone call transcripts. Respond only with the summary in Markdown format."
         if user_output_language:
             system_message_content += f" You MUST generate the entire summary in {user_output_language}."
 
