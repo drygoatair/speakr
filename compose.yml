@@ -9,7 +9,7 @@ services:
     build:
       context: .
       args:
-        LIGHTWEIGHT: 1  # Set to 1 for a smaller image without PyTorch
+        LIGHTWEIGHT: 0  # Set to 1 for a smaller image without PyTorch
     image: speakr:custom  # Tag for your custom build
     container_name: speakr
     restart: unless-stopped
@@ -17,13 +17,6 @@ services:
       - "8899:8899"
     env_file:
       - .env
-    environment:
-      # Set log level for troubleshooting
-      # Use ERROR for production (minimal logs)
-      # Use INFO for debugging issues (recommended when troubleshooting)
-      # Use DEBUG for detailed development logging
-      - LOG_LEVEL=INFO
-
     # --- Volume Configuration ---
     volumes:
       - ./uploads:/data/uploads
