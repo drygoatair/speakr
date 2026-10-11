@@ -51,6 +51,7 @@ class ConnectorRegistry:
         from .connectors.mossland import MosslandTranscriptionConnector
         from .connectors.assemblyai import AssemblyAITranscriptionConnector
         from .connectors.openasr import OpenASRTranscriptionConnector
+        from .connectors.openrouter_mai_transcribe import OpenRouterMAITranscribeConnector
         from .connectors.openrouter_scribe import OpenRouterScribeConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
@@ -63,6 +64,7 @@ class ConnectorRegistry:
         self.register('mossland', MosslandTranscriptionConnector)
         self.register('assemblyai', AssemblyAITranscriptionConnector)
         self.register('openasr', OpenASRTranscriptionConnector)
+        self.register('openrouter_mai_transcribe', OpenRouterMAITranscribeConnector)
         self.register('openrouter_scribe', OpenRouterScribeConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
@@ -400,6 +402,19 @@ class ConnectorRegistry:
                 'model': os.environ.get('OPENROUTER_MODEL', '') or 'elevenlabs/scribe-v2',
                 'timeout': int(os.environ.get('ASR_TIMEOUT') or '1800'),
                 'zdr': (os.environ.get('OPENROUTER_ZDR') or 'false').lower() == 'true',
+            }
+
+        elif connector_name == 'openrouter_mai_transcribe':
+            base_url = os.environ.get('OPENROUTER_BASE_URL', '').split('#')[0].strip()
+            return {
+                'api_key': os.environ.get('OPENROUTER_API_KEY', '') or os.environ.get('TRANSCRIPTION_API_KEY', ''),
+                'base_url': base_url or 'https://openrouter.ai/api/v1',
+                # Dedicated var: shared TRANSCRIPTION_MODEL is often a leftover from another connector
+                'model': os.environ.get('OPENROUTER_STT_MODEL', '') or 'microsoft/mai-transcribe-2',
+                'timeout': self._get_asr_timeout(),
+                'verbose_json': (os.environ.get('OPENROUTER_STT_VERBOSE_JSON') or 'true').lower() == 'true',
+                'word_timestamps': (os.environ.get('OPENROUTER_STT_WORD_TIMESTAMPS') or 'false').lower() == 'true',
+                'transcribe_style': os.environ.get('OPENROUTER_STT_TRANSCRIBE_STYLE', ''),
             }
 
         else:  # openai_whisper (default)
