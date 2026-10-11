@@ -25,3 +25,5 @@ services:
       # - ./exports:/data/exports
       # Optional: Uncomment if using auto-processing feature (ENABLE_AUTO_PROCESSING=true)
       # - ./auto-process:/data/auto-process
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
