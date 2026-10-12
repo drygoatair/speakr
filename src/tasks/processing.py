@@ -631,8 +631,11 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             current_app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
             db.session.commit()
+            # enqueue set SUMMARIZING; like the other exits, finish_processing
+            # sets COMPLETED and runs the steps that follow it (#412).
+            finish_processing(recording_id)
             from src.services.webhook_dispatch import emit_summary_result
-            emit_summary_result(recording, ok=False, error="LLM client not configured")
+            emit_summary_result(db.session.get(Recording, recording_id), ok=False, error="LLM client not configured")
             return
 
         recording.status = 'SUMMARIZING'

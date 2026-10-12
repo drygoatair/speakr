@@ -10,6 +10,13 @@ import json
 from typing import Dict, Optional, Tuple
 
 
+def _code(status):
+    """A status code as a separate token ("status 401", "(429)"), never inside
+    an id or a longer number: "401" in a Ray actor id labelled a WhisperX
+    out-of-memory traceback as an authentication error."""
+    return rf'(?<![\w.-]){status}(?![\w-]|\.\w)'
+
+
 # Known error patterns with user-friendly messages
 ERROR_PATTERNS = [
     # File size errors
@@ -17,7 +24,7 @@ ERROR_PATTERNS = [
         'patterns': [
             r'maximum content size limit.*exceeded',
             r'file.*too large',
-            r'413.*exceeded',
+            _code(413) + r'.*exceeded',
             r'payload too large',
         ],
         'title': 'File Too Large',
@@ -43,7 +50,7 @@ ERROR_PATTERNS = [
     # Authentication errors
     {
         'patterns': [
-            r'401.*unauthorized',
+            _code(401) + r'.*unauthorized',
             r'invalid.*api.*key',
             r'authentication.*failed',
             r'api key.*invalid',
@@ -60,7 +67,7 @@ ERROR_PATTERNS = [
         'patterns': [
             r'rate.*limit',
             r'too many requests',
-            r'429',
+            _code(429),
             r'quota.*exceeded',
         ],
         'title': 'Rate Limit Exceeded',
@@ -88,9 +95,9 @@ ERROR_PATTERNS = [
     # Service unavailable
     {
         'patterns': [
-            r'503.*service unavailable',
-            r'502.*bad gateway',
-            r'500.*internal server error',
+            _code(503) + r'.*service unavailable',
+            _code(502) + r'.*bad gateway',
+            _code(500) + r'.*internal server error',
             r'service.*unavailable',
             r'server.*error',
         ],
@@ -308,6 +315,23 @@ def format_error_for_user(error_text: str) -> Dict:
     }
 
 
+def truncate_middle(text: str, limit: int, tail_share: float = 0.6) -> str:
+    """Cut `text` to at most `limit` characters, keeping both ends.
+
+    A traceback says why it failed on its last line, so a cut that keeps
+    only the start loses the one line worth reading. Most of the budget
+    goes to the end (`tail_share`); the rest keeps the first lines, which
+    name the request that failed.
+    """
+    if len(text) <= limit:
+        return text
+    marker = ' … '
+    budget = max(limit - len(marker), 0)
+    tail = int(budget * tail_share)
+    head = budget - tail
+    return text[:head] + marker + text[len(text) - tail:]
+
+
 def format_error_for_storage(error_text: str) -> str:
     """
     Format an error message for storage in the database.
@@ -334,7 +358,9 @@ def format_error_for_storage(error_text: str) -> str:
     # "Technical details" panel has something to show even for unknown errors
     # where the user-facing message is the same as the raw text.
     if formatted['technical']:
-        error_data['d'] = formatted['technical'][:500]  # Limit technical detail length
+        # Limit technical detail length, keeping the end: that is where a
+        # traceback names the exception.
+        error_data['d'] = truncate_middle(formatted['technical'], 500)
 
     try:
         json_str = json.dumps(error_data, ensure_ascii=False)
