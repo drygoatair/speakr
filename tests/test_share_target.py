@@ -18,6 +18,8 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.app import app, db
@@ -27,7 +29,8 @@ from src.models import User, Recording
 def _setup_user(prefix):
     suffix = uuid.uuid4().hex[:8]
     user = User(
-        username=f"{prefix}_{suffix}",
+        # The username column holds 20 characters (PostgreSQL enforces it)
+        username=f"{prefix[:11]}_{suffix}",
         email=f"{prefix}_{suffix}@local.test",
         password="x",
     )
@@ -210,6 +213,37 @@ def test_share_target_is_csrf_exempt():
         f"share_target view should be CSRF-exempt; current exempts: {exempt_set}"
 
 
+@pytest.mark.parametrize("site", ["cross-site", "same-site"])
+def test_share_target_refuses_a_post_from_another_site(site):
+    """A forged share from another site carries the user's cookies (#435)."""
+    with app.app_context():
+        user = _setup_user(f"share_xsite_{site[:5]}")
+        client = app.test_client()
+        _login(client, user)
+        data = {"shared_audio": (io.BytesIO(b"\x00" * 512), "a.mp3"), "text": "<b>x</b>"}
+        resp = client.post("/share-target", data=data, headers={"Sec-Fetch-Site": site},
+                           content_type="multipart/form-data", follow_redirects=False)
+        assert resp.status_code == 302
+        assert "share_target_error=cross_site" in resp.headers.get("Location", "")
+        assert Recording.query.filter_by(user_id=user.id).count() == 0
+        db.session.delete(user)
+        db.session.commit()
+
+
+@pytest.mark.parametrize("site", ["none", "same-origin"])
+def test_share_target_accepts_the_share_sheet(site):
+    """The operating system's share sheet is marked "none"."""
+    with app.app_context():
+        user = _setup_user(f"share_ok_{site[:4]}")
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post("/share-target", data={}, headers={"Sec-Fetch-Site": site},
+                           follow_redirects=False)
+        assert "share_target_error=missing_file" in resp.headers.get("Location", "")
+        db.session.delete(user)
+        db.session.commit()
+
+
 def teardown_module(module):
     with app.app_context():
         for u in User.query.filter(User.username.like("share_%")).all():
@@ -224,3 +258,37 @@ if __name__ == "__main__":
     test_share_target_requires_login()
     test_share_target_is_csrf_exempt()
     print("All share-target tests passed.")
+
+
+def test_share_target_is_limited_per_user():
+    """#435: shares are counted per signed-in user; another user is not affected."""
+    from types import SimpleNamespace
+    from limits import parse
+    from limits.storage import MemoryStorage
+    from limits.strategies import FixedWindowRateLimiter
+    from src.api import recordings as rec_module
+    with app.app_context():
+        ids = [_setup_user(p).id for p in ("rl_first", "rl_second")]
+    clients = []
+    for uid in ids:
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(uid)
+            sess["_fresh"] = True
+        clients.append(client)
+    # The suite runs with rate limiting off, so Flask-Limiter has no storage;
+    # an enabled limiter with its own memory storage stands in for it.
+    old_limiter, old_limit = rec_module.limiter, rec_module.SHARE_TARGET_LIMIT
+    rec_module.limiter = SimpleNamespace(enabled=True, limiter=FixedWindowRateLimiter(MemoryStorage()))
+    rec_module.SHARE_TARGET_LIMIT = parse("2 per hour")
+    try:
+        places = [clients[0].post("/share-target", data={}).headers["Location"] for _ in range(3)]
+        assert "missing_file" in places[0] and "missing_file" in places[1]
+        assert "share_target_error=rate_limited" in places[2]
+        assert "missing_file" in clients[1].post("/share-target", data={}).headers["Location"]
+    finally:
+        rec_module.limiter, rec_module.SHARE_TARGET_LIMIT = old_limiter, old_limit
+        with app.app_context():
+            for uid in ids:
+                db.session.delete(db.session.get(User, uid))
+            db.session.commit()

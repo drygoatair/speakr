@@ -477,6 +477,19 @@
     "ctrlSHint": "Ctrl+S to save",
     "saveWithoutClosing": "Save without closing (Ctrl+S)"
   },
+  "findReplace": {
+    "open": "Find and replace (Ctrl+F)",
+    "find": "Find",
+    "replaceWith": "Replace with",
+    "matchCase": "Match case",
+    "wholeWord": "Whole words",
+    "previous": "Previous match (Shift+Enter)",
+    "next": "Next match (Enter)",
+    "replace": "Replace",
+    "replaceAll": "Replace all",
+    "noMatches": "No matches",
+    "replacedCount": "Replaced {{count}}"
+  },
   "audioRemoved": {
     "filterHint": "Recordings whose audio file was removed; the transcript is kept",
     "label": "Audio removed"
@@ -931,7 +944,9 @@
     "uploadTimedOut": "Upload timed out",
     "validationError": "Validation error",
     "waitAndRetryGuidance": "Wait a few minutes and try again",
-    "shareTarget_storage_quota": "The shared file was not saved because your storage is full."
+    "shareTarget_storage_quota": "The shared file was not saved because your storage is full.",
+    "technicalDetails": "Technical details",
+    "shareTarget_rate_limited": "Too many files were shared in a short time. Please wait before sharing more."
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
@@ -1123,6 +1138,7 @@
     "placeholderSizeMB": "Enter size in MB",
     "searchSpeakers": "Search speakers...",
     "searchTags": "Search tags...",
+    "searchFolders": "Search folders...",
     "seconds": "Seconds",
     "shareNotes": "Share Notes",
     "shareSummary": "Share Summary",
@@ -1369,7 +1385,9 @@
     "speakers": "Speakers",
     "speakersCount": "speakers",
     "tags": "Tags",
+    "folders": "Folders",
     "tagsCount": "tags",
+    "foldersCount": "folders",
     "title": "Inquire",
     "to": "To"
   },
@@ -2016,7 +2034,8 @@
     "summaryInProgress": "Summary generation in progress...",
     "title": "Summary",
     "customizePrompt": "Customise prompt",
-    "editingSaveHint": "Editing — save from the tab bar above"
+    "editingSaveHint": "Editing — save from the tab bar above",
+    "needsTranscription": "A summary can be generated once the transcription has succeeded."
   },
   "summaryMode": {
     "applyMode": "Apply mode",
@@ -2078,6 +2097,11 @@
     "summaryLabel": "Give the summarization agent timestamps",
     "chatLabel": "Give the chat agent timestamps",
     "defaultFormat": "Default timestamp format"
+  },
+  "summaryNotes": {
+    "title": "Notes in Summaries",
+    "description": "Your notes on a recording, such as the correct spelling of names, an agenda or text pasted from an email, can be given to the summarization agent as context. The transcript remains the record of what was said.",
+    "label": "Give the summarization agent my notes"
   },
   "toasts": {
     "processingCompleted": "Processing completed!",

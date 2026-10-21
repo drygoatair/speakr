@@ -7,7 +7,8 @@ name: Tests
 # Syntax is standard GitHub Actions. runs-on: ubuntu-latest is mapped by the
 # Forgejo runner to a real container image (see the runner's labels config).
 # The Python suite isolates itself to a throwaway SQLite DB via conftest.py;
-# test_postgres_migrations.py uses the postgres service below.
+# test_postgres_migrations.py uses the postgres service below, and
+# python-tests-postgres runs the whole suite on PostgreSQL.
 
 on:
   push:
@@ -35,10 +36,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: pip
@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest pytest-cov
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-cov
 
       - name: Run test suite
         env:
@@ -57,15 +57,71 @@ jobs:
           TEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_test
         run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=60
 
+  # The same suite on PostgreSQL, the database of most deployments. SQLite
+  # does not enforce column lengths or foreign keys the way PostgreSQL does,
+  # so a test (or a code path) that only works on SQLite fails here.
+  python-tests-postgres:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: speakr
+          POSTGRES_PASSWORD: speakr
+          POSTGRES_DB: speakr_suite
+        options: >-
+          --health-cmd "pg_isready -U speakr"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install ffmpeg (needed by stitch / ffprobe tests)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pip install --require-hashes --no-deps -r requirements.lock && pip install pytest pytest-timeout
+
+      - name: Run test suite on PostgreSQL
+        env:
+          # conftest.py points the app at this database instead of SQLite.
+          # The migration tests read TEST_DATABASE_URI, which is not set
+          # here, so they cannot drop the suite's tables.
+          PYTEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_suite
+        run: pytest tests/ -q -p no:cacheprovider --timeout=120
+
+  dependency-audit:
+    # The locked packages against the published advisories (pip-audit);
+    # accepted advisories are in scripts/audit-exceptions.txt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: pip install pip-audit==2.9.0
+      - name: Audit the lock files
+        run: scripts/audit-dependencies.sh
+
   js-tests:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           # No npm cache: package-lock.json is gitignored in this repo, so it's

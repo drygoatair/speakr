@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user
 from werkzeug.utils import secure_filename
 
 from src.database import db
@@ -207,6 +207,11 @@ def admin_add_user():
         if field not in data:
             return jsonify({'error': f'Missing required field: {field}'}), 400
     
+    # The username column holds 20 characters; PostgreSQL refuses a longer
+    # value, which gave a 500 instead of this message
+    if not 2 <= len(str(data['username']).strip()) <= 20:
+        return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
+
     # Check if username or email already exists
     if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'Username already exists'}), 400
@@ -272,6 +277,8 @@ def admin_update_user(user_id):
     
     # Update user fields
     if 'username' in data and data['username'] != user.username:
+        if not 2 <= len(str(data['username']).strip()) <= 20:
+            return jsonify({'error': 'The username must be 2 to 20 characters.'}), 400
         # Check if username already exists
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already exists'}), 400
@@ -288,6 +295,8 @@ def admin_update_user(user_id):
     
     if 'password' in data and data['password']:
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+        # Sign the account out of every browser (#437)
+        user.end_all_sessions()
     
     if 'is_admin' in data:
         new_is_admin = bool(data['is_admin'])
@@ -325,6 +334,10 @@ def admin_update_user(user_id):
             return jsonify({'error': 'The storage quota must be a positive number of MB.'}), 400
 
     db.session.commit()
+    if user.id == current_user.id and data.get('password'):
+        # An administrator who sets their own password stays signed in here
+        remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
+        login_user(user, remember=remembered)
 
     # Get recordings count and storage used
     recordings_count = len(user.recordings)

@@ -8,6 +8,7 @@ import logging
 import os
 from datetime import datetime
 from sqlalchemy import func
+from sqlalchemy.orm import validates
 from src.database import db
 from src.utils import md_to_html
 
@@ -157,6 +158,15 @@ class Recording(db.Model):
                     visible_tags.append(tag)
 
         return visible_tags
+
+    @validates('title')
+    def _clip_title(self, key, value):
+        # The column holds 200 characters; PostgreSQL refuses a longer value,
+        # so a long title from the API, a naming template or the AI title
+        # step is shortened here, whatever path set it
+        if isinstance(value, str) and len(value) > 200:
+            return value[:200]
+        return value
 
     def get_user_notes(self, user):
         """
@@ -520,6 +530,8 @@ class TranscriptChunk(db.Model):
     # Composite index for efficient speaker name lookups scoped to user
     __table_args__ = (
         db.Index('idx_user_speaker_name', 'user_id', 'speaker_name'),
+        # Chunks are read and deleted by recording, in order (D#441)
+        db.Index('ix_transcript_chunk_recording', 'recording_id', 'chunk_index'),
     )
 
     # Relationships

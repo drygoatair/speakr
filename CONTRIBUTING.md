@@ -135,8 +135,22 @@ python -m pytest -q tests/test_migration_compatibility.py tests/test_upgrade_pat
 
 # and against a real PostgreSQL, which the tests skip without one
 docker compose -f docker-compose.postgres.yml up -d postgres
-TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr python -m pytest -q tests/
+TEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr python -m pytest -q \
+    tests/test_postgres_migrations.py tests/test_migration_drop_not_null.py
 ```
+
+The whole suite also runs on PostgreSQL in CI (`python-tests-postgres`). To run it locally,
+create an empty database used only by the tests and pass it in `PYTEST_DATABASE_URI`:
+
+```bash
+docker compose -f docker-compose.postgres.yml exec postgres createdb -U speakr speakr_suite
+PYTEST_DATABASE_URI=postgresql://speakr:speakr@localhost:5432/speakr_suite python -m pytest -q tests/
+```
+
+`TEST_DATABASE_URI` is read only by the migration tests, which drop every table when they
+finish, so the two variables point at different databases. PostgreSQL enforces what SQLite
+does not: test data has to fit the columns (a username holds at most 20 characters), and
+a test that cleans up deletes the rows that refer to a recording, tag or user before it.
 
 These run in CI, and the pre-commit hook runs them whenever you touch `src/init_db.py`,
 `src/utils/database.py` or `src/models/`.
@@ -253,13 +267,23 @@ docker-compose -f docker-compose.dev.yml up -d --build
 # Or for local development
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install --require-hashes --no-deps -r requirements.lock
 python scripts/download_offline_deps.py   # vendor JavaScript, CSS and fonts
 scripts/build_css.sh                      # static/css/tailwind.css (Linux x64/arm64)
 python src/app.py --debug
 ```
 
 The Tailwind stylesheet is compiled from the templates and scripts. After a change to the Tailwind classes in a template or script, run `scripts/build_css.sh` again, or keep `scripts/build_css.sh --watch` running. Only complete class names written out in the source are compiled; a class name assembled from parts at runtime (for example `bg-${color}-500`) is missing from the stylesheet.
+
+### Dependencies
+
+Every Python package, including the dependencies of dependencies, is pinned with its hashes in `requirements.lock` (lite image) and `requirements-embeddings.lock` (full image), and the images are built with `pip install --require-hashes`. The vendored JavaScript, CSS and fonts are pinned to exact versions and checked against their SHA-256 checksums in `scripts/download_offline_deps.py`.
+
+- Give a clear reason for a new dependency in the PR description. A feature that can be built with the existing packages is preferred, and for a heavy dependency needed only by a rarely used feature, you may be asked to keep that part in a fork.
+- After a change to `requirements.txt` or `requirements-embeddings.txt`, run `scripts/lock-requirements.sh` (Docker is required) and commit the lock files. The lock files are checked in CI, and a mismatch is reported as a failure.
+- To update one package: `scripts/lock-requirements.sh --upgrade-package <name>`. Releases that have been public for less than a week are not accepted.
+- The locked packages are checked against the published advisories with `scripts/audit-dependencies.sh` (pip-audit), in CI and before every release. An advisory that does not apply to Speakr is listed in `scripts/audit-exceptions.txt` with a reason and a review date.
+- PRs that change dependencies, the Dockerfile, workflows or scripts, or that add minified, binary or encoded content, are reviewed line by line, so their review can take longer.
 
 ## What Happens After You Submit a PR?
 

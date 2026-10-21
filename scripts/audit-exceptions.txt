@@ -1,0 +1,34 @@
+# Advisories for locked packages that do not apply to Speakr, read by
+# scripts/audit-dependencies.sh. One per line:
+#   <advisory id>  <review date YYYY-MM-DD>  <reason>
+# Past its review date an exception no longer applies.
+
+# certifi: the fixed release (2026.10.19) came out on 2026-10-20; it is taken
+# after the 7-day wait for new releases.
+GHSA-6q48-6c7w-9gw2  2026-10-27  certifi 2026.10.19 is newer than 7 days
+
+# transformers and sentence-transformers (embeddings image only): code
+# execution or file writes when loading or saving an untrusted model. Speakr
+# loads one model, named by the administrator in EMBEDDING_MODEL, without
+# trust_remote_code, and never trains, saves or loads custom generation code.
+# The fixes are in transformers 5, a major upgrade.
+PYSEC-2025-217       2027-01-31  transformers X-CLIP conversion is not used
+PYSEC-2026-2288      2027-01-31  transformers Trainer is not used
+PYSEC-2026-2289      2027-01-31  only the administrator's embedding model is loaded
+PYSEC-2026-2290      2027-01-31  only the administrator's embedding model is loaded
+PYSEC-2026-3929      2027-01-31  tokenizers are never saved
+PYSEC-2026-4174      2027-01-31  load_custom_generate is not used
+PYSEC-2026-4164      2027-01-31  only the administrator's embedding model is loaded
+
+# pillow (embeddings image only, a dependency of transformers): eight image
+# decoder advisories published 2026-10-20, fixed in 13.0.0 (released
+# 2026-10-16). Speakr opens no images with Pillow; 13.0.0 is taken after the
+# 7-day wait for new releases.
+GHSA-p4wg-p73j-c528  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-65qm-jvmh-6pqg  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-58r4-6rv3-gfh8  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-pchr-8j38-3x4p  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-q45j-58j2-45rg  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-462x-pgg6-55fp  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-c6hw-5grf-ff96  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened
+GHSA-vx6w-vv9f-6gvg  2026-10-24  Pillow 13.0.0 is newer than 7 days; no images are opened

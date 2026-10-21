@@ -304,6 +304,8 @@ def sso_login():
         session['sso_next'] = next_url
     else:
         session.pop('sso_next', None)
+    # "Remember me" on the sign-in page, as for a password sign-in (#437)
+    session['sso_remember'] = request.args.get('remember') == '1'
 
     return oauth.sso.authorize_redirect(redirect_uri=get_sso_config().get('redirect_uri'))
 
@@ -335,6 +337,7 @@ def sso_callback():
 
     link_user_id = session.pop('sso_link_user_id', None)
     next_url = session.pop('sso_next', None)
+    remember = bool(session.pop('sso_remember', False))
     cfg = get_sso_config()
 
     if link_user_id:
@@ -368,7 +371,7 @@ def sso_callback():
         flash('Could not complete SSO login. Please try again.', 'danger')
         return redirect(url_for('auth.login'))
 
-    login_user(user, remember=True)
+    login_user(user, remember=remember)
 
     if next_url and is_safe_url(next_url):
         return redirect(next_url)
@@ -601,6 +604,8 @@ def reset_password(token):
         user.password = hashed_password
         user.password_reset_token = None  # Clear the token
         user.password_reset_sent_at = None
+        # Sign the account out of every browser (#437)
+        user.end_all_sessions()
 
         # Also verify email if not already verified
         if not user.email_verified:
@@ -788,6 +793,9 @@ def account():
                 return tpl.id if tpl else None
 
             current_user.summary_include_timestamps = 'summary_include_timestamps' in request.form
+            # Gated on its marker field so another form cannot clear it (#440)
+            if 'summary_notes_section' in request.form:
+                current_user.summary_include_notes = 'summary_include_notes' in request.form
             current_user.summary_timestamp_template_id = _ts_template_id('summary_timestamp_template_id')
             current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
             current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
@@ -1066,7 +1074,12 @@ def change_password():
     # not leave an emailed reset token able to overwrite the new password.
     current_user.password_reset_token = None
     current_user.password_reset_sent_at = None
+    # Sign the account out of every other browser (#437), and sign this one
+    # in again with the new login id.
+    remembered = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token') in request.cookies
+    current_user.end_all_sessions()
     db.session.commit()
+    login_user(current_user, remember=remembered)
 
     flash('Your password has been updated!', 'success')
     return redirect(url_for('auth.account'))

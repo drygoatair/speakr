@@ -273,6 +273,9 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'recording', 'upload_idempotency_key', 'VARCHAR(100)'):
             app.logger.info("Added upload_idempotency_key column to recording table")
         create_index_if_not_exists(engine, 'ix_recording_user_idem', 'recording', 'user_id, upload_idempotency_key')
+        # Chunks are read and deleted by recording, in order (D#441)
+        create_index_if_not_exists(engine, 'ix_transcript_chunk_recording', 'transcript_chunk',
+                                   'recording_id, chunk_index')
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):
@@ -404,6 +407,10 @@ def _run_migrations(app, engine):
         if add_column_if_not_exists(engine, 'user', 'theme_color_scheme', 'VARCHAR(16)'):
             app.logger.info("Added theme_color_scheme column to user table")
 
+        # Raised when the password is set, to end the account's sign-ins (#437)
+        if add_column_if_not_exists(engine, 'user', 'session_version', 'INTEGER'):
+            app.logger.info("Added session_version column to user table")
+
         # Storage quota in megabytes (#413)
         if add_column_if_not_exists(engine, 'user', 'storage_quota_mb', 'INTEGER'):
             app.logger.info("Added storage_quota_mb column to user table")
@@ -458,6 +465,9 @@ def _run_migrations(app, engine):
         # Per-feature transcript timestamp settings (#304)
         if add_column_if_not_exists(engine, 'user', 'summary_include_timestamps', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added summary_include_timestamps column to user table")
+        # Notes given to the summarizer (#440), off by default
+        if add_column_if_not_exists(engine, 'user', 'summary_include_notes', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added summary_include_notes column to user table")
         if add_column_if_not_exists(engine, 'user', 'summary_timestamp_template_id', 'INTEGER'):
             app.logger.info("Added summary_timestamp_template_id column to user table")
         if add_column_if_not_exists(engine, 'user', 'chat_include_timestamps', 'BOOLEAN DEFAULT 0'):

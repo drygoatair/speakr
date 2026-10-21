@@ -52,6 +52,8 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
+from src.utils.mime import served_media_mime, sandbox_media_response
+from src.utils.filenames import shorten_filename
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, try_repair_malformed_webm, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
@@ -1744,8 +1746,9 @@ def get_recordings_paginated():
             # Default: sort by created_at (upload/processing date)
             stmt = stmt.order_by(Recording.created_at.desc())
 
-        # Get total count for pagination info
-        count_stmt = select(db.func.count()).select_from(stmt.subquery())
+        # Get total count for pagination info; the order does not change the
+        # count, so it is left out of the counting query (D#441)
+        count_stmt = select(db.func.count()).select_from(stmt.order_by(None).subquery())
         total_count = db.session.execute(count_stmt).scalar()
 
         # Apply pagination
@@ -1870,7 +1873,11 @@ def save_metadata():
         if 'notes' in data:
             if recording.user_id == current_user.id:
                 # Owner saves to Recording.notes
-                recording.notes = sanitize_html(data['notes']) if data['notes'] else data['notes']
+                # Stored as written: notes and summaries are Markdown, and the
+                # HTML cleaner would turn "> quote" into "&gt; quote". They are
+                # cleaned when converted to HTML (md_to_html), the only form ever
+                # shown as HTML.
+                recording.notes = data['notes']
             else:
                 # Shared user saves to personal_notes (requires SharedRecordingState)
                 from src.models.sharing import SharedRecordingState
@@ -1889,7 +1896,7 @@ def save_metadata():
                     )
                     db.session.add(state)
 
-                state.personal_notes = sanitize_html(data['notes']) if data['notes'] else data['notes']
+                state.personal_notes = data['notes']
 
         # Determine if any fields requiring edit permission are being updated
         edit_fields = ['title', 'participants', 'summary', 'meeting_date']
@@ -1908,7 +1915,7 @@ def save_metadata():
             if 'participants' in data:
                 recording.participants = data['participants']
             if 'summary' in data:
-                recording.summary = sanitize_html(data['summary']) if data['summary'] else data['summary']
+                recording.summary = data['summary']
             if 'meeting_date' in data:
                 try:
                     date_str = data['meeting_date']
@@ -2107,6 +2114,21 @@ def delete_recording_audio(recording_id):
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
+# Shares per signed-in user (#435): a forced share from another page cannot
+# fill an account or queue paid transcriptions without bound.
+try:
+    from limits import parse as _parse_limit
+    SHARE_TARGET_LIMIT = _parse_limit(os.environ.get('SHARE_TARGET_RATE_LIMIT', '20 per hour'))
+except Exception:
+    SHARE_TARGET_LIMIT = None
+
+
+def _share_target_allowed(user_id):
+    if SHARE_TARGET_LIMIT is None or limiter is None or not getattr(limiter, 'enabled', True):
+        return True
+    return limiter.limiter.hit(SHARE_TARGET_LIMIT, 'share_target', str(user_id))
+
+
 @recordings_bp.route('/share-target', methods=['POST', 'GET'])
 @login_required
 def share_target():
@@ -2121,7 +2143,11 @@ def share_target():
     CSRF is exempted at app startup (the share sheet has no way to
     round-trip a CSRF token). Authentication still happens via the
     session cookie carried by the browser; unauthenticated visitors hit
-    @login_required and are bounced to the login page.
+    @login_required and are bounced to the login page. A POST that a
+    browser marks as sent from another site (``Sec-Fetch-Site``) is
+    refused (#435): a share from the operating system's share sheet is
+    marked ``none``, and a page elsewhere could otherwise submit a forged
+    share with the signed-in user's cookies.
 
     Implementation: save the file to ``UPLOAD_FOLDER``, create a Recording
     row applying the same user / folder / tag defaults as ``upload_file``
@@ -2133,6 +2159,16 @@ def share_target():
     if request.method == 'GET':
         # Some platforms pre-flight with GET. Just land the user on the SPA.
         return redirect(url_for('recordings.index'))
+
+    # Browsers without Fetch Metadata send no header and are let through.
+    if request.headers.get('Sec-Fetch-Site', '').lower() in ('cross-site', 'same-site'):
+        current_app.logger.warning(
+            f"share-target POST from another site refused for user {current_user.id}")
+        return redirect(url_for('recordings.index') + '?share_target_error=cross_site')
+
+    if not _share_target_allowed(current_user.id):
+        current_app.logger.warning(f"share-target rate limit reached for user {current_user.id}")
+        return redirect(url_for('recordings.index') + '?share_target_error=rate_limited')
 
     shared = request.files.get('shared_audio') or request.files.get('file')
     if not shared or not getattr(shared, 'filename', ''):
@@ -2219,7 +2255,7 @@ def ingest_uploaded_recording(
                 response_data['idempotent_replay'] = True
                 return jsonify(response_data), success_status
 
-        safe_filename = secure_filename(original_filename)
+        safe_filename = shorten_filename(secure_filename(original_filename))
         storage = get_storage_service()
         staging_dir = storage.get_staging_dir()
         filepath = os.path.join(
@@ -2576,6 +2612,13 @@ def ingest_uploaded_recording(
             if corrected != mime_type:
                 current_app.logger.info(f"Resolved video mime {mime_type!r} -> {corrected!r} from container for {filepath}")
             mime_type = corrected
+
+        # The extension is the uploader's choice: an audio file named .html
+        # was stored as text/html (#438). A guess that is not audio or video
+        # is replaced by the type of the contents.
+        if not (mime_type or '').startswith(('audio/', 'video/')):
+            from src.utils.mime import resolve_media_mime
+            mime_type = served_media_mime(resolve_media_mime(filepath, codec_info=codec_info))
 
         current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
 
@@ -3718,10 +3761,11 @@ def get_audio(recording_id):
             ext = os.path.splitext(recording.original_filename or '')[1] or '.mp3'
             download_name = f"{filename}{ext}"
 
+        serve_mime = served_media_mime(recording.mime_type, recording.audio_path)
         delivery = storage.get_audio_delivery(
             recording.audio_path,
             download=download,
-            mime_type=recording.mime_type,
+            mime_type=serve_mime,
             download_name=download_name,
             is_public=False,
         )
@@ -3734,15 +3778,15 @@ def get_audio(recording_id):
             return jsonify({'error': 'Audio file missing from server'}), 404
 
         if download:
-            return send_file(
+            return sandbox_media_response(send_file(
                 delivery.local_path,
                 as_attachment=True,
                 download_name=download_name,
-                mimetype=recording.mime_type,
+                mimetype=serve_mime,
                 conditional=True,
-            )
+            ))
 
-        return send_file(delivery.local_path, mimetype=recording.mime_type, conditional=True)
+        return sandbox_media_response(send_file(delivery.local_path, mimetype=serve_mime, conditional=True))
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500

@@ -477,6 +477,19 @@
     "ctrlSHint": "Strg+S zum Speichern",
     "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)"
   },
+  "findReplace": {
+    "open": "Suchen und ersetzen (Strg+F)",
+    "find": "Suchen",
+    "replaceWith": "Ersetzen durch",
+    "matchCase": "Groß-/Kleinschreibung beachten",
+    "wholeWord": "Ganze Wörter",
+    "previous": "Vorheriger Treffer (Umschalt+Eingabe)",
+    "next": "Nächster Treffer (Eingabe)",
+    "replace": "Ersetzen",
+    "replaceAll": "Alle ersetzen",
+    "noMatches": "Keine Treffer",
+    "replacedCount": "{{count}} ersetzt"
+  },
   "audioRemoved": {
     "filterHint": "Aufnahmen, deren Audiodatei entfernt wurde; das Transkript bleibt erhalten",
     "label": "Audio entfernt"
@@ -931,7 +944,9 @@
     "uploadTimedOut": "Upload-Zeitüberschreitung",
     "validationError": "Validierungsfehler",
     "waitAndRetryGuidance": "Einige Minuten warten und erneut versuchen",
-    "shareTarget_storage_quota": "Die geteilte Datei wurde nicht gespeichert, weil Ihr Speicher voll ist."
+    "shareTarget_storage_quota": "Die geteilte Datei wurde nicht gespeichert, weil Ihr Speicher voll ist.",
+    "technicalDetails": "Technische Details",
+    "shareTarget_rate_limited": "In kurzer Zeit wurden zu viele Dateien geteilt. Bitte warten Sie, bevor Sie weitere teilen."
   },
   "eventExtraction": {
     "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",
@@ -1121,6 +1136,7 @@
     "placeholderSizeMB": "Größe in MB eingeben",
     "searchSpeakers": "Sprecher suchen...",
     "searchTags": "Tags suchen...",
+    "searchFolders": "Ordner suchen...",
     "seconds": "Sekunden",
     "shareNotes": "Notizen teilen",
     "shareSummary": "Zusammenfassung teilen",
@@ -1369,7 +1385,9 @@
     "speakers": "Sprecher",
     "speakersCount": "Sprecher",
     "tags": "Tags",
+    "folders": "Ordner",
     "tagsCount": "Tags",
+    "foldersCount": "Ordner",
     "title": "Nachfragen",
     "to": "Bis"
   },
@@ -2016,7 +2034,8 @@
     "summaryInProgress": "Zusammenfassung wird generiert...",
     "title": "Zusammenfassung",
     "customizePrompt": "Prompt anpassen",
-    "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern"
+    "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern",
+    "needsTranscription": "Eine Zusammenfassung kann erstellt werden, sobald die Transkription erfolgreich war."
   },
   "summaryMode": {
     "applyMode": "Anwendungsmodus",
@@ -2078,6 +2097,11 @@
     "summaryLabel": "Dem Zusammenfassungs-Agenten Zeitstempel geben",
     "chatLabel": "Dem Chat-Agenten Zeitstempel geben",
     "defaultFormat": "Standard-Zeitstempelformat"
+  },
+  "summaryNotes": {
+    "title": "Notizen in Zusammenfassungen",
+    "description": "Ihre Notizen zu einer Aufnahme, etwa die richtige Schreibweise von Namen, eine Tagesordnung oder aus einer E-Mail eingefügter Text, können dem Zusammenfassungsagenten als Kontext übergeben werden. Das Transkript bleibt die Aufzeichnung des Gesagten.",
+    "label": "Meine Notizen an den Zusammenfassungsagenten übergeben"
   },
   "toasts": {
     "processingCompleted": "Verarbeitung abgeschlossen!",

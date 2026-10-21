@@ -477,6 +477,19 @@
     "saveWithoutClosing": "Salvar sem fechar (Ctrl+S)",
     "saved": "Salvo"
   },
+  "findReplace": {
+    "open": "Localizar e substituir (Ctrl+F)",
+    "find": "Localizar",
+    "replaceWith": "Substituir por",
+    "matchCase": "Diferenciar maiúsculas",
+    "wholeWord": "Palavras inteiras",
+    "previous": "Ocorrência anterior (Shift+Enter)",
+    "next": "Próxima ocorrência (Enter)",
+    "replace": "Substituir",
+    "replaceAll": "Substituir tudo",
+    "noMatches": "Nenhuma ocorrência",
+    "replacedCount": "{{count}} substituídas"
+  },
   "audioRemoved": {
     "filterHint": "Gravações cujo arquivo de áudio foi removido; a transcrição é mantida",
     "label": "Áudio removido"
@@ -931,7 +944,9 @@
     "uploadTimedOut": "Tempo limite de envio excedido",
     "validationError": "Erro de validação",
     "waitAndRetryGuidance": "Aguarde alguns minutos e tente novamente",
-    "shareTarget_storage_quota": "O arquivo compartilhado não foi salvo porque seu armazenamento está cheio."
+    "shareTarget_storage_quota": "O arquivo compartilhado não foi salvo porque seu armazenamento está cheio.",
+    "technicalDetails": "Detalhes técnicos",
+    "shareTarget_rate_limited": "Muitos arquivos foram compartilhados em pouco tempo. Aguarde antes de compartilhar mais."
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",
@@ -1121,6 +1136,7 @@
     "placeholderSizeMB": "Digite tamanho em MB",
     "searchSpeakers": "Pesquisar oradores...",
     "searchTags": "Pesquisar etiquetas...",
+    "searchFolders": "Pesquisar pastas...",
     "seconds": "Segundos",
     "shareNotes": "Compartilhar Notas",
     "shareSummary": "Compartilhar Resumo",
@@ -1369,7 +1385,9 @@
     "speakers": "Oradores",
     "speakersCount": "oradores",
     "tags": "Etiquetas",
+    "folders": "Pastas",
     "tagsCount": "etiquetas",
+    "foldersCount": "pastas",
     "title": "Consulta",
     "to": "Para"
   },
@@ -2016,7 +2034,8 @@
     "summaryInProgress": "Geração de resumo em andamento...",
     "title": "Resumo",
     "customizePrompt": "Personalizar prompt",
-    "editingSaveHint": "Editando — salvar na barra de abas acima"
+    "editingSaveHint": "Editando — salvar na barra de abas acima",
+    "needsTranscription": "Um resumo poderá ser gerado quando a transcrição for concluída com sucesso."
   },
   "summaryMode": {
     "append": "Acrescentar",
@@ -2078,6 +2097,11 @@
     "summaryLabel": "Dar marcações de tempo ao agente de resumo",
     "chatLabel": "Dar marcações de tempo ao agente de chat",
     "defaultFormat": "Formato de marcação de tempo padrão"
+  },
+  "summaryNotes": {
+    "title": "Notas nos resumos",
+    "description": "Suas notas sobre uma gravação, como a grafia correta de nomes, uma pauta ou um texto colado de um e-mail, podem ser enviadas ao agente de resumo como contexto. A transcrição continua sendo o registro do que foi dito.",
+    "label": "Enviar minhas notas ao agente de resumo"
   },
   "toasts": {
     "processingCompleted": "Processamento concluído!",
